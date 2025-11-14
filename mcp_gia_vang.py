@@ -1,6 +1,7 @@
 # mcp_gia_vang.py
 # Server MCP tổng hợp cho giá vàng (SJC, Doji, PNJ, ...)
 # Dựa trên mã nguồn từ github.com/TranTruongMMCII/gia-vang-hom-nay
+# PHIÊN BẢN ĐÃ SỬA LỖI isinstance()
 
 from __future__ import annotations
 
@@ -57,13 +58,36 @@ def _normalise_snapshot(data: object) -> PriceSnapshot:
         for product, payload in products.items():
             if not isinstance(payload, dict):
                 continue
+            
             product_key = str(product)
-            # Đảm bảo giá trị là int hoặc None
             buy_val = payload.get("buy")
             sell_val = payload.get("sell")
+
+            # === PHẦN SỬA LỖI (FIXED) ===
+            # Xử lý buy_val
+            processed_buy = None
+            if isinstance(buy_val, (int, float)):
+                processed_buy = int(buy_val)
+            elif isinstance(buy_val, str) and buy_val.isdigit():
+                try:
+                    processed_buy = int(buy_val)
+                except ValueError:
+                    processed_buy = None # Xử lý trường hợp chuỗi quá lớn
+            
+            # Xử lý sell_val
+            processed_sell = None
+            if isinstance(sell_val, (int, float)):
+                processed_sell = int(sell_val)
+            elif isinstance(sell_val, str) and sell_val.isdigit():
+                try:
+                    processed_sell = int(sell_val)
+                except ValueError:
+                    processed_sell = None
+            # === KẾT THÚC SỬA LỖI ===
+
             snapshot[source_key][product_key] = {
-                "buy": int(buy_val) if isinstance(buy_val, (int, float, str) and str(buy_val).isdigit()) else None,
-                "sell": int(sell_val) if isinstance(sell_val, (int, float, str) and str(sell_val).isdigit()) else None,
+                "buy": processed_buy,
+                "sell": processed_sell,
                 "unit": payload.get("unit"),
             }
     return snapshot
